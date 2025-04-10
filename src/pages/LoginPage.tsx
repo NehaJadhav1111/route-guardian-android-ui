@@ -8,16 +8,19 @@ import PrimaryButton from "@/components/PrimaryButton";
 import SecondaryButton from "@/components/SecondaryButton";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setEmailNotConfirmed(false);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -26,11 +29,21 @@ const LoginPage = () => {
       });
       
       if (error) {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive"
-        });
+        // Check for email not confirmed error
+        if (error.message.toLowerCase().includes("email not confirmed")) {
+          setEmailNotConfirmed(true);
+          toast({
+            title: "Email not confirmed",
+            description: "Please check your inbox and confirm your email address",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Login failed",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
         console.error("Login error:", error.message);
       } else {
         toast({
@@ -82,11 +95,59 @@ const LoginPage = () => {
     navigate('/signup');
   };
 
+  const handleResendConfirmationEmail = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email
+      });
+      
+      if (error) {
+        toast({
+          title: "Failed to resend confirmation email",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Confirmation email sent",
+          description: "Please check your inbox for the confirmation link",
+        });
+      }
+    } catch (error) {
+      console.error("Unexpected error during email resend:", error);
+      toast({
+        title: "Failed to resend confirmation email",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-white animate-fade-in">
       <Header />
       <div className="flex-1 flex flex-col justify-center p-6">
         <form onSubmit={handleLogin} className="max-w-md w-full mx-auto">
+          {emailNotConfirmed && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>
+                Your email is not confirmed. Please check your inbox for the confirmation link or 
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto ml-1 text-blue-600" 
+                  onClick={handleResendConfirmationEmail}
+                  disabled={loading}
+                >
+                  click here to resend the confirmation email
+                </Button>.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <InputField
             label="Email"
             type="email"
