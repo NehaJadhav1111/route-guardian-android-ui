@@ -8,40 +8,51 @@ import PrimaryButton from "@/components/PrimaryButton";
 import SecondaryButton from "@/components/SecondaryButton";
 import { toast } from "@/hooks/use-toast";
 
-const LoginPage = () => {
+const SignupPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords match",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
       });
       
       if (error) {
         toast({
-          title: "Login failed",
+          title: "Signup failed",
           description: error.message,
           variant: "destructive"
         });
-        console.error("Login error:", error.message);
+        console.error("Signup error:", error.message);
       } else {
         toast({
-          title: "Login successful",
-          description: "Welcome back!",
+          title: "Signup successful",
+          description: "Please check your email to confirm your account",
         });
-        navigate('/location');
+        navigate('/login');
       }
     } catch (error) {
-      console.error("Unexpected error during login:", error);
+      console.error("Unexpected error during signup:", error);
       toast({
-        title: "Login failed",
+        title: "Signup failed",
         description: "An unexpected error occurred",
         variant: "destructive"
       });
@@ -50,15 +61,15 @@ const LoginPage = () => {
     }
   };
 
-  const navigateToSignup = () => {
-    navigate('/signup');
+  const navigateToLogin = () => {
+    navigate('/login');
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-white animate-fade-in">
       <Header />
       <div className="flex-1 flex flex-col justify-center p-6">
-        <form onSubmit={handleLogin} className="max-w-md w-full mx-auto">
+        <form onSubmit={handleSignup} className="max-w-md w-full mx-auto">
           <InputField
             label="Email"
             type="email"
@@ -77,29 +88,32 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
           
+          <InputField
+            label="Confirm Password"
+            type="password"
+            placeholder="Confirm your password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          
           <div className="mt-8">
             <PrimaryButton 
               type="submit" 
               className="w-full"
               disabled={loading}
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Creating account..." : "Create account"}
             </PrimaryButton>
-          </div>
-          
-          <div className="mt-4 text-center">
-            <a href="#" className="text-blue-600 hover:underline text-sm">
-              Forget Password
-            </a>
           </div>
           
           <div className="mt-6 text-center">
             <SecondaryButton 
               type="button" 
               className="w-full" 
-              onClick={navigateToSignup}
+              onClick={navigateToLogin}
             >
-              Create account
+              Already have an account? Login
             </SecondaryButton>
           </div>
         </form>
@@ -108,4 +122,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default SignupPage;
