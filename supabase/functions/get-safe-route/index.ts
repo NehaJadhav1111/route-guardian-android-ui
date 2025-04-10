@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { DBSCAN } from "https://esm.sh/density-clustering@0.1.6";
 import { calculateDist, astar } from "./route-algorithms.ts";
 
 // CORS headers for browser access
@@ -65,6 +64,81 @@ type SafeRouteResponse = {
   hotspots: CrimeCluster[];
 };
 
+// Simplified DBSCAN implementation since we can't import density-clustering
+function dbscan(points: number[][], eps: number, minPts: number): number[][] {
+  const clusters: number[][] = [];
+  const visited: boolean[] = new Array(points.length).fill(false);
+  const noise: number[] = [];
+
+  // Get neighbors within eps distance
+  function getNeighbors(pointIdx: number): number[] {
+    const neighbors: number[] = [];
+    for (let i = 0; i < points.length; i++) {
+      if (i !== pointIdx) {
+        const dist = Math.sqrt(
+          Math.pow(points[pointIdx][0] - points[i][0], 2) + 
+          Math.pow(points[pointIdx][1] - points[i][1], 2)
+        );
+        if (dist <= eps) {
+          neighbors.push(i);
+        }
+      }
+    }
+    return neighbors;
+  }
+
+  // Expand cluster
+  function expandCluster(point: number, neighbors: number[], clusterIdx: number): void {
+    clusters[clusterIdx].push(point);
+    
+    for (let i = 0; i < neighbors.length; i++) {
+      const neighborIdx = neighbors[i];
+      
+      if (!visited[neighborIdx]) {
+        visited[neighborIdx] = true;
+        const newNeighbors = getNeighbors(neighborIdx);
+        
+        if (newNeighbors.length >= minPts) {
+          neighbors.push(...newNeighbors.filter(n => !neighbors.includes(n)));
+        }
+      }
+      
+      // Add to cluster if not yet in any cluster
+      let inCluster = false;
+      for (const cluster of clusters) {
+        if (cluster.includes(neighborIdx)) {
+          inCluster = true;
+          break;
+        }
+      }
+      
+      if (!inCluster) {
+        clusters[clusterIdx].push(neighborIdx);
+      }
+    }
+  }
+
+  // Main DBSCAN algorithm
+  let clusterIdx = 0;
+  for (let i = 0; i < points.length; i++) {
+    if (visited[i]) continue;
+    
+    visited[i] = true;
+    const neighbors = getNeighbors(i);
+    
+    if (neighbors.length < minPts) {
+      noise.push(i);
+      continue;
+    }
+    
+    clusters[clusterIdx] = [];
+    expandCluster(i, neighbors, clusterIdx);
+    clusterIdx++;
+  }
+  
+  return clusters;
+}
+
 // Load crime data from Supabase and run clustering to find hotspots
 async function analyzeCrimeData(): Promise<CrimeCluster[]> {
   const { data: crimeData, error } = await supabase
@@ -83,11 +157,8 @@ async function analyzeCrimeData(): Promise<CrimeCluster[]> {
     .filter((crime: CrimeData) => crime.lat !== null && crime.long !== null)
     .map((crime: CrimeData) => [crime.lat!, crime.long!]);
 
-  // Run DBSCAN clustering
-  const dbscan = new DBSCAN();
-  
-  // Parameters: epsilon (neighborhood radius) and minPoints (minimum points in cluster)
-  const clusters = dbscan.run(points, 0.01, 2);
+  // Run our custom DBSCAN implementation
+  const clusters = dbscan(points, 0.01, 2);
   
   const hotspots: CrimeCluster[] = [];
   
