@@ -382,6 +382,54 @@ serve(async (req) => {
   }
   
   try {
+    if (req.method === "POST") {
+      // Parse the request body instead of using search params
+      const requestData = await req.json();
+      const src = requestData.src;
+      const dst = requestData.dst;
+      
+      if (!src || !dst) {
+        return new Response(
+          JSON.stringify({
+            error: "Missing source or destination parameters",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      const [srcLat, srcLng] = src.split(",").map(Number);
+      const [dstLat, dstLng] = dst.split(",").map(Number);
+      
+      // Get user ID if authenticated
+      let userId: string | undefined;
+      const authHeader = req.headers.get("Authorization");
+      
+      if (authHeader) {
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        
+        if (!error && user) {
+          userId = user.id;
+        }
+      }
+      
+      const safeRoute = await computeSafeRoute(
+        srcLat,
+        srcLng,
+        dstLat,
+        dstLng,
+        userId
+      );
+      
+      return new Response(JSON.stringify(safeRoute), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Also support GET for backward compatibility or direct URL access
     if (req.method === "GET") {
       const url = new URL(req.url);
       const src = url.searchParams.get("src");
