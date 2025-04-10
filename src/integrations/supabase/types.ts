@@ -9,7 +9,90 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      crime: {
+        Row: {
+          area: number
+          "assualt murders": number | null
+          "crime/area": number
+          gangrape: number | null
+          lat: number | null
+          long: number | null
+          murder: number | null
+          nm_pol: string
+          rape: number | null
+          robbery: number | null
+          "sexual harassement": number | null
+          theft: number | null
+          totalcrime: number | null
+          totarea: number | null
+        }
+        Insert: {
+          area: number
+          "assualt murders"?: number | null
+          "crime/area": number
+          gangrape?: number | null
+          lat?: number | null
+          long?: number | null
+          murder?: number | null
+          nm_pol: string
+          rape?: number | null
+          robbery?: number | null
+          "sexual harassement"?: number | null
+          theft?: number | null
+          totalcrime?: number | null
+          totarea?: number | null
+        }
+        Update: {
+          area?: number
+          "assualt murders"?: number | null
+          "crime/area"?: number
+          gangrape?: number | null
+          lat?: number | null
+          long?: number | null
+          murder?: number | null
+          nm_pol?: string
+          rape?: number | null
+          robbery?: number | null
+          "sexual harassement"?: number | null
+          theft?: number | null
+          totalcrime?: number | null
+          totarea?: number | null
+        }
+        Relationships: []
+      }
+      route_history: {
+        Row: {
+          created_at: string
+          destination_lat: number
+          destination_lng: number
+          id: string
+          route_data: Json | null
+          source_lat: number
+          source_lng: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destination_lat: number
+          destination_lng: number
+          id?: string
+          route_data?: Json | null
+          source_lat: number
+          source_lng: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destination_lat?: number
+          destination_lng?: number
+          id?: string
+          route_data?: Json | null
+          source_lat?: number
+          source_lng?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

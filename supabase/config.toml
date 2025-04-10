@@ -1,1 +1,5 @@
+
 project_id = "pyasrqfmrjbhclhiihfq"
+
+[functions.get-safe-route]
+verify_jwt = false
