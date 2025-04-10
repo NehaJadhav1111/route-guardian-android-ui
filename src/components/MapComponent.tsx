@@ -48,7 +48,7 @@ const MapComponent = ({ className, source, destination }: MapComponentProps) => 
       setError(null);
       
       try {
-        // Fix: Use 'body' instead of 'params' for passing function parameters
+        // Use 'body' to pass parameters to the edge function
         const { data, error } = await supabase.functions.invoke('get-safe-route', {
           body: {
             src: `${src.lat},${src.lng}`,
