@@ -23,6 +23,7 @@ serve(async (req) => {
     const { address } = await req.json();
     
     if (!address) {
+      console.error("No address provided in request");
       return new Response(
         JSON.stringify({ error: "Address is required" }),
         {
@@ -32,6 +33,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Geocoding address: "${address}"`);
+
     // Call the Nominatim API to geocode the address
     const params = new URLSearchParams({
       q: address,
@@ -39,15 +42,31 @@ serve(async (req) => {
       limit: "1",
     });
 
-    const response = await fetch(`${NOMINATIM_API}?${params.toString()}`, {
+    const nominatimURL = `${NOMINATIM_API}?${params.toString()}`;
+    console.log(`Calling Nominatim API: ${nominatimURL}`);
+
+    const response = await fetch(nominatimURL, {
       headers: {
         "User-Agent": "SafeRoute App (contact@saferoute.com)",
       },
     });
 
+    if (!response.ok) {
+      console.error(`Nominatim API returned status: ${response.status}`);
+      return new Response(
+        JSON.stringify({ error: `Geocoding service error: ${response.statusText}` }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const data = await response.json();
+    console.log(`Nominatim response for "${address}":`, JSON.stringify(data).substring(0, 200) + "...");
     
     if (!data || data.length === 0) {
+      console.log(`No results found for address: "${address}"`);
       return new Response(
         JSON.stringify({ error: "Location not found" }),
         {
@@ -64,6 +83,8 @@ serve(async (req) => {
       display_name: data[0].display_name,
     };
 
+    console.log(`Geocoded "${address}" to:`, result);
+
     return new Response(
       JSON.stringify(result),
       {
@@ -71,10 +92,10 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error processing request:", error);
+    console.error("Error processing geocoding request:", error);
     
     return new Response(
-      JSON.stringify({ error: "Failed to geocode address" }),
+      JSON.stringify({ error: "Failed to geocode address", details: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
