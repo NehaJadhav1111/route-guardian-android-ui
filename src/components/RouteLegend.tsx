@@ -7,19 +7,20 @@ interface RouteLegendProps {
 
 const RouteLegend = ({ className }: RouteLegendProps) => {
   return (
-    <div className={cn("absolute bottom-4 right-4 bg-white p-3 rounded-lg shadow-md", className)}>
+    <div className={cn("bg-white p-3 rounded-lg shadow-md", className)}>
+      <h3 className="font-semibold mb-2">Route Safety</h3>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-safeRoute"></div>
-          <span className="font-medium">: Safe</span>
+          <div className="w-4 h-4 rounded-full bg-green-500 border border-gray-300"></div>
+          <span className="font-medium text-sm">Safe</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-normalRoute"></div>
-          <span className="font-medium">: Normal</span>
+          <div className="w-4 h-4 rounded-full bg-blue-500 border border-gray-300"></div>
+          <span className="font-medium text-sm">Moderate Risk</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-unsafeRoute"></div>
-          <span className="font-medium">: Not Safe</span>
+          <div className="w-4 h-4 rounded-full bg-red-500 border border-gray-300"></div>
+          <span className="font-medium text-sm">High Risk</span>
         </div>
       </div>
     </div>
