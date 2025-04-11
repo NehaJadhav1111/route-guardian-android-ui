@@ -43,37 +43,49 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
   const demoDestination = { lat: 28.6304, lng: 77.2177 }; // Different point in Delhi
 
   useEffect(() => {
+    console.log("MapComponent mounted with source:", source, "destination:", destination);
+    
     // Dynamic import of leaflet to avoid SSR issues
     const loadMap = async () => {
       if (!mapContainer.current) return;
       
-      const L = await import('leaflet');
-      
-      // Get the source and destination coordinates
-      const src = source || demoSource;
-      const dst = destination || demoDestination;
-      
-      // Create map if it doesn't exist
-      if (!leafletMapRef.current) {
-        // Clear any existing content
-        while (mapContainer.current.firstChild) {
-          mapContainer.current.removeChild(mapContainer.current.firstChild);
+      try {
+        const L = await import('leaflet');
+        
+        // Get the source and destination coordinates
+        const src = source || demoSource;
+        const dst = destination || demoDestination;
+        
+        console.log("Using coordinates - source:", src, "destination:", dst);
+        
+        // Create map if it doesn't exist
+        if (!leafletMapRef.current) {
+          console.log("Creating new Leaflet map");
+          // Clear any existing content
+          while (mapContainer.current.firstChild) {
+            mapContainer.current.removeChild(mapContainer.current.firstChild);
+          }
+          
+          // Create the map centered between source and destination
+          const centerLat = (src.lat + dst.lat) / 2;
+          const centerLng = (src.lng + dst.lng) / 2;
+          
+          leafletMapRef.current = L.map(mapContainer.current).setView([centerLat, centerLng], 13);
+          
+          // Add OpenStreetMap tile layer
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }).addTo(leafletMapRef.current);
+        } else {
+          console.log("Reusing existing Leaflet map");
         }
         
-        // Create the map centered between source and destination
-        const centerLat = (src.lat + dst.lat) / 2;
-        const centerLng = (src.lng + dst.lng) / 2;
-        
-        leafletMapRef.current = L.map(mapContainer.current).setView([centerLat, centerLng], 13);
-        
-        // Add OpenStreetMap tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(leafletMapRef.current);
+        // Fetch and display the safe route
+        await fetchSafeRoute(src, dst);
+      } catch (err) {
+        console.error("Error initializing map:", err);
+        setError("Failed to load map. Please try refreshing the page.");
       }
-      
-      // Fetch and display the safe route
-      await fetchSafeRoute(src, dst);
     };
     
     loadMap();
@@ -81,6 +93,7 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
     return () => {
       // Clean up map on unmount
       if (leafletMapRef.current) {
+        console.log("Cleaning up Leaflet map");
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
       }
@@ -94,6 +107,8 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
     setError(null);
     
     try {
+      console.log("Fetching safe route for:", src, dst);
+      
       // Use 'body' to pass parameters to the edge function
       const { data, error } = await supabase.functions.invoke('get-safe-route', {
         body: {
@@ -103,9 +118,11 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
       });
 
       if (error) {
+        console.error("Edge function error:", error);
         throw new Error(error.message || 'Failed to fetch safe route');
       }
 
+      console.log("Safe route data received:", data);
       const safeRouteData = data as SafeRouteResponse;
       setSafetyScore(safeRouteData.overallSafetyScore);
       
@@ -234,7 +251,7 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
 
   return (
     <div className={`relative w-full h-full bg-gray-100 ${className}`}>
-      <div ref={mapContainer} className="relative w-full h-full">
+      <div ref={mapContainer} className="relative w-full h-full min-h-[500px]">
         {/* The map will be rendered here */}
       </div>
       

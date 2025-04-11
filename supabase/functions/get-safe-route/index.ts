@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { calculateDist, astar } from "./route-algorithms.ts";
@@ -26,7 +25,7 @@ type CrimeData = {
   lat: number | null;
   long: number | null;
   totalcrime: number | null;
-  "crime/area": number;
+  crime_per_area: number; // renamed to match the updated column name
 };
 
 type CrimeCluster = {
@@ -143,7 +142,7 @@ function dbscan(points: number[][], eps: number, minPts: number): number[][] {
 async function analyzeCrimeData(): Promise<CrimeCluster[]> {
   const { data: crimeData, error } = await supabase
     .from("crime")
-    .select("nm_pol, lat, long, totalcrime, crime/area")
+    .select("nm_pol, lat, long, totalcrime, \"crime/area\"")
     .not("lat", "is", null)
     .not("long", "is", null);
 
