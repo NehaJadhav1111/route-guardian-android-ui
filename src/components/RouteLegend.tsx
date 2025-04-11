@@ -22,6 +22,9 @@ const RouteLegend = ({ className }: RouteLegendProps) => {
           <div className="w-4 h-4 rounded-full bg-red-500 border border-gray-300"></div>
           <span className="font-medium text-sm">High Risk</span>
         </div>
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          <span className="text-xs text-gray-500">High risk areas in Delhi include Paharganj, Chandni Chowk, Seemapuri, Nand Nagri, Shaheen Bagh, Jahangirpuri, Narela, and New Usmanpur.</span>
+        </div>
       </div>
     </div>
   );

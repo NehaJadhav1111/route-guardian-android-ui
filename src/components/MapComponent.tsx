@@ -30,6 +30,18 @@ type SafeRouteResponse = {
   }>;
 };
 
+// List of high-risk areas in Delhi based on the article
+const highRiskAreas = [
+  { name: "Paharganj", coordinates: { lat: 28.6453, lng: 77.2182 }, radius: 1.5 },
+  { name: "Chandni Chowk", coordinates: { lat: 28.6506, lng: 77.2310 }, radius: 1.2 },
+  { name: "Seemapuri", coordinates: { lat: 28.6889, lng: 77.3256 }, radius: 1.8 },
+  { name: "Nand Nagri", coordinates: { lat: 28.6907, lng: 77.3117 }, radius: 1.5 },
+  { name: "Shaheen Bagh", coordinates: { lat: 28.5526, lng: 77.3009 }, radius: 1.3 },
+  { name: "Jahangirpuri", coordinates: { lat: 28.7292, lng: 77.0644 }, radius: 1.6 },
+  { name: "Narela", coordinates: { lat: 28.8526, lng: 77.1006 }, radius: 2.0 },
+  { name: "New Usmanpur", coordinates: { lat: 28.6789, lng: 77.2596 }, radius: 1.4 }
+];
+
 // This component renders a map with safe route information
 const MapComponent = ({ className, source, destination, sourceAddress, destinationAddress }: MapComponentProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -41,6 +53,31 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
   // Demo coordinates for testing when not provided
   const demoSource = { lat: 28.6129, lng: 77.2295 }; // Delhi
   const demoDestination = { lat: 28.6304, lng: 77.2177 }; // Different point in Delhi
+
+  // Check if a location is within any of the predefined high-risk areas
+  const isInHighRiskArea = (lat: number, lng: number): boolean => {
+    return highRiskAreas.some(area => {
+      const distance = calculateDistance(lat, lng, area.coordinates.lat, area.coordinates.lng);
+      return distance <= area.radius;
+    });
+  };
+
+  // Calculate distance between two points in km (Haversine formula)
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    
+    return distance;
+  };
 
   useEffect(() => {
     console.log("MapComponent mounted with source:", source, "destination:", destination);
@@ -57,6 +94,18 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
         const dst = destination || demoDestination;
         
         console.log("Using coordinates - source:", src, "destination:", dst);
+        
+        // Check if source or destination is in a high-risk area
+        const sourceInHighRisk = isInHighRiskArea(src.lat, src.lng);
+        const destInHighRisk = isInHighRiskArea(dst.lat, dst.lng);
+        
+        if (sourceInHighRisk || destInHighRisk) {
+          toast({
+            title: "Safety Warning",
+            description: "Your route includes high-risk areas in Delhi. Please exercise caution.",
+            variant: "destructive",
+          });
+        }
         
         // Create map if it doesn't exist
         if (!leafletMapRef.current) {
@@ -79,6 +128,18 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
         } else {
           console.log("Reusing existing Leaflet map");
         }
+        
+        // Add high-risk areas to the map
+        highRiskAreas.forEach(area => {
+          L.circle([area.coordinates.lat, area.coordinates.lng], {
+            radius: area.radius * 1000, // Convert km to meters
+            color: "#ea384c",
+            fillColor: "#ea384c",
+            fillOpacity: 0.15,
+            weight: 1
+          }).bindPopup(`<strong>High Risk Area:</strong> ${area.name}`)
+            .addTo(leafletMapRef.current);
+        });
         
         // Fetch and display the safe route
         await fetchSafeRoute(src, dst);
@@ -150,7 +211,9 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
     // Clear existing route layers
     leafletMapRef.current.eachLayer((layer: any) => {
       if (layer instanceof L.Polyline || layer instanceof L.Marker || layer instanceof L.Circle) {
-        leafletMapRef.current.removeLayer(layer);
+        if (!layer.options.isHighRiskArea) { // Don't remove high-risk area circles
+          leafletMapRef.current.removeLayer(layer);
+        }
       }
     });
     
@@ -168,7 +231,7 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
       let fillOpacity;
       
       if (hotspot.riskLevel === 'high') {
-        color = '#FF0000'; // Red
+        color = '#ea384c'; // Red
         fillOpacity = 0.4;
       } else if (hotspot.riskLevel === 'medium') {
         color = '#FFA500'; // Orange
@@ -192,21 +255,31 @@ const MapComponent = ({ className, source, destination, sourceAddress, destinati
       const start = [segment.start.lat, segment.start.lng];
       const end = [segment.end.lat, segment.end.lng];
       
+      // Check if segment passes through high-risk area
+      const isSegmentHighRisk = 
+        isInHighRiskArea(segment.start.lat, segment.start.lng) || 
+        isInHighRiskArea(segment.end.lat, segment.end.lng) ||
+        segment.risk === 'high';
+      
       let color;
       let weight = 5;
       
-      switch (segment.risk) {
-        case 'high':
-          color = '#FF0000'; // Red
-          break;
-        case 'medium':
-          color = '#0000FF'; // Blue
-          break;
-        case 'low':
-          color = '#00FF00'; // Green
-          break;
-        default:
-          color = '#000000'; // Black
+      if (isSegmentHighRisk) {
+        color = '#ea384c'; // Red for high-risk areas from the article
+      } else {
+        switch (segment.risk) {
+          case 'high':
+            color = '#ea384c'; // Red
+            break;
+          case 'medium':
+            color = '#0000FF'; // Blue
+            break;
+          case 'low':
+            color = '#00FF00'; // Green
+            break;
+          default:
+            color = '#000000'; // Black
+        }
       }
       
       L.polyline([start, end], {
